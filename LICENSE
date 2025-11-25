@@ -26,6 +26,7 @@ IMPORTANT DISCLAIMER:
 
 This is a reference implementation for educational and exploration purposes only.
 This software is NOT intended for production use without:
+
 - Comprehensive security audits
 - Proper key management systems
 - Regulatory compliance review
@@ -33,4 +34,3 @@ This software is NOT intended for production use without:
 
 Use at your own risk. The authors and contributors assume no liability for any
 losses or damages resulting from the use of this software.
-

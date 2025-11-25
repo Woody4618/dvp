@@ -8,15 +8,13 @@ import {
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
-  createMint,
   createAccount,
-  mintTo,
   approve,
-  transferChecked,
   thawAccount,
   freezeAccount,
   getAccount,
   getAssociatedTokenAddress,
+  createTransferCheckedInstruction,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   ExtensionType,
@@ -24,13 +22,16 @@ import {
   createInitializeMintInstruction,
   createInitializeDefaultAccountStateInstruction,
   createInitializeMetadataPointerInstruction,
-  createInitializeInstruction,
-  createUpdateFieldInstruction,
   AccountState,
   LENGTH_SIZE,
   TYPE_SIZE,
 } from "@solana/spl-token";
-import { pack, type TokenMetadata } from "@solana/spl-token-metadata";
+import {
+  pack,
+  createInitializeInstruction,
+  createUpdateFieldInstruction,
+  type TokenMetadata,
+} from "@solana/spl-token-metadata";
 import { BondTokenConfig, DvPParams, DvPResult } from "./types";
 
 /**
@@ -81,7 +82,6 @@ export class DvPEngine {
       symbol: config.symbol,
       uri: config.description || "",
       additionalMetadata: [
-        // Commented out for now - can add back after basic metadata works
         ["couponRate", config.couponRate.toString()],
         ["maturityDate", config.maturityDate.toISOString()],
         ["isin", config.isin || ""],
@@ -102,10 +102,9 @@ export class DvPEngine {
     const spaceWithoutMetadataExtension = getMintLen(extensions);
 
     // Calculate rent for FULL space (mint + metadata + TLV overhead)
-    var lamports = await this.connection.getMinimumBalanceForRentExemption(
+    const lamports = await this.connection.getMinimumBalanceForRentExemption(
       spaceWithoutMetadataExtension + metadataLen + metadataExtension
     );
-    lamports += 100000000;
 
     // Build transaction following the official docs pattern
     const transaction = new Transaction().add(
@@ -147,7 +146,7 @@ export class DvPEngine {
         symbol: config.symbol,
         uri: config.description || "",
         mintAuthority: issuer.publicKey,
-        updateAuthority: issuer.publicKey,
+        updateAuthority: this.settlementAgent.publicKey, // Settlement Agent manages metadata
       })
     );
 
@@ -158,7 +157,7 @@ export class DvPEngine {
           createUpdateFieldInstruction({
             programId: TOKEN_2022_PROGRAM_ID,
             metadata: mintKeypair.publicKey,
-            updateAuthority: issuer.publicKey,
+            updateAuthority: this.settlementAgent.publicKey, // Settlement Agent manages metadata
             field: field,
             value: value,
           })
@@ -166,11 +165,11 @@ export class DvPEngine {
       }
     }
 
-    // Send transaction
+    // Send transaction (Settlement Agent signs for metadata updates)
     await sendAndConfirmTransaction(
       this.connection,
       transaction,
-      [issuer, mintKeypair],
+      [issuer, mintKeypair, this.settlementAgent],
       { commitment: "confirmed" }
     );
 
@@ -178,6 +177,9 @@ export class DvPEngine {
     console.log(`   Mint Authority: ${issuer.publicKey.toBase58()}`);
     console.log(
       `   Freeze Authority: ${this.settlementAgent.publicKey.toBase58()}`
+    );
+    console.log(
+      `   Update Authority: ${this.settlementAgent.publicKey.toBase58()}`
     );
     console.log(`   Default State: FROZEN (requires whitelisting)`);
     console.log(`   ✨ Metadata: ON-CHAIN`);
@@ -335,11 +337,10 @@ export class DvPEngine {
 
     // Add bond transfer instruction (Issuer → Investor)
     transaction.add(
-      await this.createTransferCheckedInstruction(
+      this.createTransferCheckedIx(
         issuerBondAccount,
         params.bondMint,
         investorBondAccount,
-        params.issuer,
         params.bondAmount,
         0, // bonds have 0 decimals
         TOKEN_2022_PROGRAM_ID
@@ -348,11 +349,10 @@ export class DvPEngine {
 
     // Add USDC transfer instruction (Investor → Issuer)
     transaction.add(
-      await this.createTransferCheckedInstruction(
+      this.createTransferCheckedIx(
         investorUSDCAccount,
         params.usdcMint,
         issuerUSDCAccount,
-        params.investor,
         params.usdcAmount * 1e6, // USDC has 6 decimals
         6,
         TOKEN_PROGRAM_ID
@@ -384,25 +384,21 @@ export class DvPEngine {
   }
 
   /**
-   * Helper to create a transferChecked instruction with delegation
+   * Helper to create a transferChecked instruction using delegated authority
    */
-  private async createTransferCheckedInstruction(
+  private createTransferCheckedIx(
     source: PublicKey,
     mint: PublicKey,
     destination: PublicKey,
-    owner: PublicKey,
     amount: number,
     decimals: number,
     programId: PublicKey
   ) {
-    const { TOKEN_PROGRAM_ID: TOKEN_ID, createTransferCheckedInstruction } =
-      await import("@solana/spl-token");
-
     return createTransferCheckedInstruction(
       source,
       mint,
       destination,
-      this.settlementAgent.publicKey, // Use settlement agent as authority (delegated)
+      this.settlementAgent.publicKey, // Settlement agent acts via delegation
       amount,
       decimals,
       [],
