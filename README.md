@@ -486,6 +486,47 @@ dvp/
 
 ---
 
+## Why Delegation? (TradFi Pattern)
+
+This is actually how real settlement systems work — a **Central Counterparty (CCP)** or **Clearinghouse** sits in the middle. Both parties trust the clearinghouse to execute fairly.
+
+```
+┌─────────┐     delegates      ┌──────────────────┐     delegates     ┌──────────┐
+│ Issuer  │ ─────────────────→ │ Settlement Agent │ ←──────────────── │ Investor │
+└─────────┘    (bonds)         │    (trusted)     │      (USDC)       └──────────┘
+                               │                  │
+                               │  executes atomic │
+                               │   transaction    │
+                               └──────────────────┘
+```
+
+### Alternative: Peer-to-Peer with Partial Signatures
+
+On Solana you could theoretically also build this using partially signed transactions, where both parties sign the same transaction:
+
+```typescript
+// 1. Build transaction
+const tx = new Transaction().add(bondTransfer, usdcTransfer);
+
+// 2. Issuer partially signs
+tx.partialSign(issuer);
+
+// 3. Send to investor (off-chain)
+const serialized = tx.serialize({ requireAllSignatures: false });
+
+// 4. Investor adds signature
+tx.partialSign(investor);
+
+// 5. Broadcast complete transaction
+await sendAndConfirmTransaction(connection, tx, []);
+```
+
+But this adds UX complexity — both parties need to be online and coordinate.
+
+> **TL;DR:** The delegation pattern is actually production-valid. The "user signing" already happened when they called `approve()` to delegate to the settlement agent.
+
+---
+
 ## Dependencies
 
 - `@solana/web3.js` - Solana JavaScript SDK
