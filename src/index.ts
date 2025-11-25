@@ -1,3 +1,2 @@
-export { MPXDvPEngine } from './dvp-engine';
-export { BondTokenConfig, DvPParams, DvPResult, AccountInfo } from './types';
-
+export { MPXDvPEngine } from "./dvp-engine";
+export { BondTokenConfig, DvPParams, DvPResult, AccountInfo } from "./types";
