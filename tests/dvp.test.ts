@@ -13,7 +13,7 @@ import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
 } from '@solana/spl-token';
-import { MPXDvPEngine } from '../src/dvp-engine';
+import { DvPEngine } from '../src/dvp-engine';
 import { BondTokenConfig } from '../src/types';
 
 /**
@@ -39,7 +39,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runDvPDemo() {
   console.log('═══════════════════════════════════════════════════════');
-  console.log('   MPX DvP Demo - Solana Reference Implementation');
+  console.log('   DvP Demo - Solana Reference Implementation');
   console.log('═══════════════════════════════════════════════════════\n');
 
   // ============================================================
@@ -63,7 +63,7 @@ async function runDvPDemo() {
   console.log(`   Investor: ${investor.publicKey.toBase58()}`);
 
   // Initialize DVP Engine
-  const dvpEngine = new MPXDvPEngine(connection, settlementAgent);
+  const dvpEngine = new DvPEngine(connection, settlementAgent);
 
   // Fund accounts
   console.log('\n💰 Funding accounts with SOL...');
@@ -96,8 +96,8 @@ async function runDvPDemo() {
   console.log('─────────────────────────────────────────────────────');
 
   const bondConfig: BondTokenConfig = {
-    name: 'MPX Commercial Paper',
-    symbol: 'MPXCP',
+    name: 'Commercial Paper',
+    symbol: 'CP',
     decimals: 0, // Whole bonds only
     maturityDate: new Date('2026-12-31'),
     couponRate: 5.0,

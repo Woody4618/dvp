@@ -34,7 +34,7 @@ import { pack, type TokenMetadata } from "@solana/spl-token-metadata";
 import { BondTokenConfig, DvPParams, DvPResult } from "./types";
 
 /**
- * MPX DvP Engine - Reference Implementation
+ * DvP Engine - Reference Implementation
  *
  * This implementation demonstrates Delivery vs Payment (DvP) on Solana using:
  * - SPL Token 2022 with Default Account State extension for bonds
@@ -45,7 +45,7 @@ import { BondTokenConfig, DvPParams, DvPResult } from "./types";
  * ⚠️ IMPORTANT: This is a reference implementation for educational purposes.
  * Do NOT use in production without proper audits and security reviews.
  */
-export class MPXDvPEngine {
+export class DvPEngine {
   private connection: Connection;
   private settlementAgent: Keypair;
 

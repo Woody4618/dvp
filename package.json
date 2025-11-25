@@ -1,7 +1,7 @@
 {
   "name": "solana-dvp-demo",
   "version": "1.0.0",
-  "description": "MPX DvP Reference Implementation for Solana",
+  "description": "DvP Reference Implementation for Solana",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
