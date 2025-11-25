@@ -1,14 +1,8 @@
-import {
-  Connection,
-  Keypair,
-  PublicKey,
-  clusterApiUrl,
-  LAMPORTS_PER_SOL,
-} from "@solana/web3.js";
+import { Connection, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import {
   createMint,
   mintTo,
-  createAccount,
+  getOrCreateAssociatedTokenAccount,
   getAccount,
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -39,7 +33,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function runDvPDemo() {
   console.log("═══════════════════════════════════════════════════════");
-  console.log("   DvP Demo - Solana Reference Implementation");
+  console.log("   DvP Demo - Solana Example Implementation");
   console.log("═══════════════════════════════════════════════════════\n");
 
   // ============================================================
@@ -141,33 +135,13 @@ async function runDvPDemo() {
   console.log("\n\n📋 PHASE 4: ACCOUNT SETUP");
   console.log("─────────────────────────────────────────────────────");
 
-  // Create issuer's bond account
-  console.log("\n🏦 Creating issuer bond account...");
-  const issuerBondAccount = await createAccount(
-    connection,
-    issuer,
+  // Whitelist issuer for bonds (they need to hold bonds to sell them)
+  console.log("\n🏦 Whitelisting issuer for bond holding...");
+  const issuerBondAccount = await dvpEngine.whitelist(
     bondMint,
     issuer.publicKey,
-    undefined,
-    { commitment: "confirmed" },
-    TOKEN_2022_PROGRAM_ID
+    settlementAgent
   );
-  console.log(`   Account: ${issuerBondAccount.toBase58()}`);
-
-  // Thaw issuer's account (they need to be whitelisted too)
-  console.log("   Thawing issuer account...");
-  const { thawAccount } = await import("@solana/spl-token");
-  await thawAccount(
-    connection,
-    settlementAgent,
-    issuerBondAccount,
-    bondMint,
-    settlementAgent,
-    [],
-    { commitment: "confirmed" },
-    TOKEN_2022_PROGRAM_ID
-  );
-  console.log("   ✅ Issuer account ready");
 
   // Mint bonds to issuer
   console.log(`\n🪙 Minting ${BOND_AMOUNT} bonds to issuer...`);
@@ -186,7 +160,7 @@ async function runDvPDemo() {
 
   // Whitelist investor for bonds
   console.log("\n🔓 Whitelisting investor for bond trading...");
-  const investorBondAccount = await dvpEngine.whitelistInvestor(
+  const investorBondAccount = await dvpEngine.whitelist(
     bondMint,
     investor.publicKey,
     settlementAgent
@@ -196,27 +170,31 @@ async function runDvPDemo() {
   console.log("\n💵 Setting up USDC accounts...");
 
   // Investor USDC account
-  const investorUSDCAccount = await createAccount(
+  const investorUSDCAccountInfo = await getOrCreateAssociatedTokenAccount(
     connection,
     investor,
     mockUSDCMint,
     investor.publicKey,
-    undefined,
+    false,
+    "confirmed",
     { commitment: "confirmed" },
     TOKEN_PROGRAM_ID
   );
+  const investorUSDCAccount = investorUSDCAccountInfo.address;
   console.log(`   Investor USDC: ${investorUSDCAccount.toBase58()}`);
 
   // Issuer USDC account
-  const issuerUSDCAccount = await createAccount(
+  const issuerUSDCAccountInfo = await getOrCreateAssociatedTokenAccount(
     connection,
     issuer,
     mockUSDCMint,
     issuer.publicKey,
-    undefined,
+    false,
+    "confirmed",
     { commitment: "confirmed" },
     TOKEN_PROGRAM_ID
   );
+  const issuerUSDCAccount = issuerUSDCAccountInfo.address;
   console.log(`   Issuer USDC: ${issuerUSDCAccount.toBase58()}`);
 
   // Mint USDC to investor
@@ -429,7 +407,9 @@ async function runDvPDemo() {
   console.log("═══════════════════════════════════════════════════════\n");
 
   console.log(`✅ Settlement Status: ${allPassed ? "SUCCESS" : "FAILED"}`);
-  console.log(`⚡ Transaction Signature: ${dvpResult.signature}`);
+  console.log(
+    `⚡ Transaction: https://explorer.solana.com/tx/${dvpResult.signature}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899`
+  );
   console.log(`🔗 Network: Local Validator`);
   console.log(`💰 Bond Amount: ${BOND_AMOUNT}`);
   console.log(`💵 USDC Amount: ${USDC_AMOUNT}`);

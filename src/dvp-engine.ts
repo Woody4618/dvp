@@ -8,12 +8,12 @@ import {
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
-  createAccount,
   approve,
   thawAccount,
   freezeAccount,
   getAccount,
   getAssociatedTokenAddress,
+  getOrCreateAssociatedTokenAccount,
   createTransferCheckedInstruction,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -196,43 +196,49 @@ export class DvPEngine {
   }
 
   /**
-   * Whitelists an investor by creating their bond account and thawing it
+   * Whitelists a participant by creating their bond account and thawing it
    */
-  async whitelistInvestor(
+  async whitelist(
     bondMint: PublicKey,
-    investor: PublicKey,
+    participant: PublicKey,
     payer: Keypair
   ): Promise<PublicKey> {
-    console.log(`\n🔓 Whitelisting investor: ${investor.toBase58()}`);
+    console.log(`\n🔓 Whitelisting participant: ${participant.toBase58()}`);
 
-    // Create token account (will be frozen by default)
-    const investorBondAccount = await createAccount(
+    // Get or create token account (will be frozen by default if new)
+    const bondAccount = await getOrCreateAssociatedTokenAccount(
       this.connection,
       payer,
       bondMint,
-      investor,
-      undefined,
+      participant,
+      false, // allowOwnerOffCurve
+      "confirmed",
       { commitment: "confirmed" },
       TOKEN_2022_PROGRAM_ID
     );
 
-    console.log(`   Account created: ${investorBondAccount.toBase58()}`);
+    console.log(`   Account: ${bondAccount.address.toBase58()}`);
 
-    // Thaw the account to allow trading
-    await thawAccount(
-      this.connection,
-      this.settlementAgent,
-      investorBondAccount,
-      bondMint,
-      this.settlementAgent,
-      [],
-      { commitment: "confirmed" },
-      TOKEN_2022_PROGRAM_ID
-    );
+    // Only thaw if the account is frozen
+    if (bondAccount.isFrozen) {
+      await thawAccount(
+        this.connection,
+        this.settlementAgent,
+        bondAccount.address,
+        bondMint,
+        this.settlementAgent,
+        [],
+        { commitment: "confirmed" },
+        TOKEN_2022_PROGRAM_ID
+      );
+      console.log(`✅ Participant whitelisted and account thawed`);
+    } else {
+      console.log(
+        `✅ Participant already whitelisted (account was not frozen)`
+      );
+    }
 
-    console.log(`✅ Investor whitelisted and account thawed`);
-
-    return investorBondAccount;
+    return bondAccount.address;
   }
 
   /**
