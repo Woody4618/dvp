@@ -259,14 +259,14 @@ async createBondToken(
 
 **Returns:** The mint address of the created bond token
 
-##### `whitelistInvestor()`
+##### `whitelist()`
 
-Whitelists an investor by creating and thawing their bond account.
+Whitelists a participant by creating and thawing their bond account.
 
 ```typescript
-async whitelistInvestor(
+async whitelist(
   bondMint: PublicKey,
-  investor: PublicKey,
+  participant: PublicKey,
   payer: Keypair
 ): Promise<PublicKey>
 ```
@@ -274,10 +274,10 @@ async whitelistInvestor(
 **Parameters:**
 
 - `bondMint` - The bond token mint address
-- `investor` - The investor's public key
+- `participant` - The participant's public key (issuer or investor)
 - `payer` - Keypair that pays for account creation
 
-**Returns:** The investor's bond token account address
+**Returns:** The participant's bond token account address
 
 ##### `removeFromWhitelist()`
 
@@ -366,8 +366,9 @@ const bondMint = await dvp.createBondToken(issuer, {
   couponRate: 5.0,
 });
 
-// Whitelist investor
-await dvp.whitelistInvestor(bondMint, investor.publicKey, settlementAgent);
+// Whitelist participants
+await dvp.whitelist(bondMint, issuer.publicKey, settlementAgent);
+await dvp.whitelist(bondMint, investor.publicKey, settlementAgent);
 
 // Execute DvP
 const result = await dvp.executeDvP({
