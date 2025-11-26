@@ -62,7 +62,7 @@ On Solana, you can build this using existing tools (SPL Token 2022) instead of w
 ### Prerequisites
 
 1. **Node.js** (v18 or higher)
-2. **Solana CLI** tools
+2. **Solana CLI** tools (Currently tested with 2.0.3. Does not work with 3.0.0 at the moment of writing yet.)
 3. **Local validator** (for testing)
 
 ### Installation
